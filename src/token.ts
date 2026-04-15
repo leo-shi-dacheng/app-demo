@@ -3,7 +3,7 @@ import { PrivyTokenU64V2_1_ABI } from "./abis/PrivyTokenU64V2_1_ABI";
 import { OZERC20_ABI } from "./abis/OZERC20_ABI";
 import { PUSDCTokenV2_1_ABI } from "./abis/PUSDCTokenV2_1_ABI";
 import { PMUSDTokenV2_1_ABI } from "./abis/PMUSDTokenV2_1_ABI";
-import { requestEncrypt, requestDecrypt, FheType, estimateFheFee } from "@primuslabs/fhe-sdk";
+import { requestEncryption, requestDecryption, FheType, estimateFheFee } from "@primuslabs/fhe-sdk";
 import { getACLContract } from "@primuslabs/fhe-sdk/dist/utils";
 import 'dotenv/config';
 
@@ -88,6 +88,7 @@ export class Erc20Token {
 
   async balanceOf(account: string) {
     const balanceHandle = await this.tokenContract.balanceOf(account);
+    console.log('balanceHandle', balanceHandle)
     const balance = await this.decrypt(balanceHandle);
     const decimals = await this.decimals();
     const formattedBalance = EthersT.formatUnits(balance, decimals);
@@ -176,8 +177,6 @@ export class OZERC20Token extends Erc20Token {
 }
 
 export class EncryptedErc20Token extends Erc20Token {
-  private readonly ACL_ADDRESS = process.env.ACL_ADDRESS || "";
-
   constructor(tokenAddress: string, tokenABI: EthersT.Interface | EthersT.InterfaceAbi) {
     super(tokenAddress, tokenABI);
   }
@@ -187,29 +186,24 @@ export class EncryptedErc20Token extends Erc20Token {
   }
 
   protected async encrypt(value: number | bigint, timeout: number = 30000): Promise<any> {
-    return await requestEncrypt(
+    return await requestEncryption(
       this.signer as Wallet,
-      this.ACL_ADDRESS,
       value,
       this.getFheType(),
-      await this.getChainID(),
-      null,
       { isMock: this.isMock }
     );
   }
 
   protected async decrypt(handle: string, timeout: number = 60000): Promise<any> {
-    return await requestDecrypt(
+    return await requestDecryption(
       this.signer as Wallet,
-      this.ACL_ADDRESS,
-      this.getFheType(),
       handle,
       { isMock: this.isMock, timeout: timeout }
     );
   }
 
   async allowForDecryption(handle: string, account?: string) {
-    const aclContract = await getACLContract(this.ACL_ADDRESS, this.signer ?? this.provider);
+    const aclContract = await getACLContract(undefined, true);
     let tx;
     if (account) {
       tx = await aclContract['accessPolicy(bytes32,address,uint8)'](handle, account, 2);
