@@ -44,7 +44,7 @@ test/tps/types.ts            # 类型定义
 
 1. 每个 sender 钱包都需要有足够 HSK 支付 Gas。
 2. 每个 sender 钱包都需要有足够 PUSDC 可转账余额。
-3. 所有 sender 私钥和 recipient 地址统一维护在 `docs/whitelist-users.csv`。脚本默认读取 `private_key` 列作为 sender，并把 `address` 列错位一位作为 recipient，避免 self-transfer。
+3. 所有 sender/recipient 私钥和地址统一维护在 `docs/whitelist-users.csv`。脚本默认按相邻两行组成独立 pair：`row1 -> row2`、`row3 -> row4`、`row5 -> row6`。
 4. `ACL_ADDRESS`、`WHITELIST_ADDRESS`、`PUSDC_TOKEN_ADDRESS`、`RPC_URL` 必须指向同一网络。
 5. balance 模式会解密 recipient balance，脚本会尝试将 controller 钱包加入白名单。
 6. 测试网配置可以从 `.env.hashkey.testnet` 读取；直接运行脚本时默认读取 `.env`，使用 npm script 时会通过 `DOTENV_CONFIG_PATH=.env.hashkey.testnet` 指定测试网文件。
@@ -61,8 +61,8 @@ WHITELIST_ADDRESS=0x...
 TPS_AMOUNT=1
 TPS_TX_COUNT=100
 TPS_TX_DELAY=0
-TPS_WAVE_SIZE=50
-TPS_SEND_CONCURRENCY=50
+TPS_WAVE_SIZE=25
+TPS_SEND_CONCURRENCY=25
 TPS_WAVE_DELAY=200
 TPS_ENCRYPT_MODE=pre
 TPS_TRANSFER_VALUE=1
@@ -71,8 +71,9 @@ TPS_MODE=balance
 
 sender 私钥不要写入 `.env.hashkey.testnet`。默认情况下，脚本会读取 `docs/whitelist-users.csv`，并自动生成：
 
-- `TPS_PRIVATE_KEYS`：来自 CSV 的 `private_key` 列。
-- `TPS_RECIPIENTS`：来自 CSV 的 `address` 列，按下一行地址错位生成，例如 `row1 -> row2`、`row2 -> row3`、最后一行 `-> row1`。
+- `TPS_PRIVATE_KEYS`：来自 CSV 奇数行的 `private_key` 列，作为 sender。
+- `TPS_RECIPIENTS`：来自 CSV 偶数行的 `address` 列，作为 recipient，例如 `row1 -> row2`、`row3 -> row4`、`row5 -> row6`。
+- 解密钱包池：来自 CSV 所有行的 `private_key` 列，用于 balance 模式按 recipient 自己的钱包解密余额。
 
 如需使用其它 CSV 文件，可设置 `TPS_WALLET_CSV=path/to/file.csv`。
 
@@ -118,14 +119,14 @@ TPS_TX_COUNT=100 npm run tps:testnet
 
 ```bash
 TPS_TX_COUNT=1000 \
-TPS_SEND_CONCURRENCY=50 \
-TPS_WAVE_SIZE=50 \
+TPS_SEND_CONCURRENCY=25 \
+TPS_WAVE_SIZE=25 \
 TPS_WAVE_DELAY=200 \
 TPS_CONFIRM_TIMEOUT=900 \
 npm run tps:testnet:event
 ```
 
-该命令会使用 `docs/whitelist-users.csv` 中的 50 个白名单钱包发送 1000 笔交易，按 20 个 wave 执行：每个 wave 含 50 笔交易，每个钱包 lane 同时发送一笔；下一轮 wave 会等上一轮交易都被 RPC 接收后再开始，因此同一钱包的 nonce 始终按顺序递增。
+该命令会使用 `docs/whitelist-users.csv` 中的白名单钱包按独立 pair 发送交易。当前 50 个 CSV 钱包会派生出 25 个 sender lane；每个 wave 默认最多包含 25 笔交易，每个 sender lane 同时发送一笔；下一轮 wave 会等上一轮交易都被 RPC 接收后再开始，因此同一钱包的 nonce 始终按顺序递增。
 
 测完整用户链路：
 
@@ -136,8 +137,8 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 ## 关键参数
 
 - `TPS_WALLET_CSV`：钱包 CSV 路径，默认 `docs/whitelist-users.csv`。CSV 必须包含 `address` 和 `private_key` 列。
-- `TPS_PRIVATE_KEYS`：逗号分隔的 sender 私钥列表。默认从 CSV 的 `private_key` 列读取；正式 TPS 压测至少需要 50 个 sender，少于 50 个时脚本会直接报错。多 sender 可以减少单账号 nonce 串行对结果的影响。
-- `TPS_RECIPIENTS`：逗号分隔的 recipient 地址。默认从 CSV 的 `address` 列错位派生。数量可以是 1 个或与 sender 数量相同。
+- `TPS_PRIVATE_KEYS`：逗号分隔的 sender 私钥列表。默认从 CSV 奇数行读取；正式 TPS 压测至少需要 25 个 sender，少于 25 个时脚本会直接报错。多 sender 可以减少单账号 nonce 串行对结果的影响。
+- `TPS_RECIPIENTS`：逗号分隔的 recipient 地址。默认从 CSV 偶数行派生。数量可以是 1 个或与 sender 数量相同。
 - `TPS_RECIPIENT`：单个 recipient 地址；仅在 `TPS_RECIPIENTS` 为空时生效。注意当前 eUSDC transfer 要求 recipient 也在 whitelist 中。
 - `WHITELIST_ADDRESS`：独立白名单合约地址。脚本会用 `verifyWhitelisted(bytes32)` 校验 controller 钱包；hash 规则与 `cast keccak <address>` 一致。
 - `TPS_ENCRYPT_MODE=pre`：先完成所有加密，再统一进入 transfer 发送阶段。推荐用于 transfer TPS。
@@ -157,7 +158,7 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 - `TPS_POLL_INTERVAL`：balance 模式轮询 recipient balance 的间隔，单位 ms，默认 `5000`。调小会减少观测延迟，但会增加解密请求压力。
 - `TPS_CONFIRM_TIMEOUT`：等待链上确认的超时时间，单位秒。
 - `TPS_SETTLE_TIMEOUT`：最后一笔确认后等待 FHE settlement 的超时时间，单位秒。
-- `TPS_DECRYPT_TIMEOUT`：单次 balance 解密总超时时间，单位 ms，默认 `150000`。gRPC 解密会复用 keepalive 长连接；如果遇到 `404 decryption is not available` 或 `DEADLINE_EXCEEDED`，会在该总超时内轮询重试。
+- `TPS_DECRYPT_TIMEOUT`：单次 balance 解密总超时时间，单位 ms，默认 `15000000`。gRPC 解密会复用 keepalive 长连接；如果遇到 `404 decryption is not available` 或 `DEADLINE_EXCEEDED`，会在该总超时内轮询重试。
 - `MOCK_TEST=ON`：启用 FHE SDK mock 模式；正式测试网压测不要设置。
 
 ## 指标解读
@@ -177,19 +178,19 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 
 ## 推荐压测流程
 
-1. 准备至少 50 个 CSV 钱包，并提前转入 HSK 和 PUSDC。
+1. 准备至少 50 个 CSV 钱包，并提前给 sender 行钱包转入 HSK 和 PUSDC；50 个 CSV 钱包会形成 25 个独立 sender/recipient pair。
 2. 确认 `docs/whitelist-users.csv` 里的 `address` 都已加入 eUSDC whitelist；不要让脚本生成随机 recipient。
-3. 在保持 50 个 sender 钱包不变的前提下，使用 `TPS_TX_COUNT=1` 做连通性冒烟测试。
+3. 在保持独立 sender/recipient pair 不变的前提下，使用 `TPS_TX_COUNT=1` 做连通性冒烟测试。
 4. 将 `TPS_TX_COUNT` 提高到 50、100、200 分批测试。
-5. 使用 1000 tx full test：`TPS_TX_COUNT=1000 TPS_WAVE_SIZE=50 TPS_SEND_CONCURRENCY=50 TPS_WAVE_DELAY=200 npm run tps:testnet:event`。
+5. 使用 1000 tx full test：`TPS_TX_COUNT=1000 TPS_WAVE_SIZE=25 TPS_SEND_CONCURRENCY=25 TPS_WAVE_DELAY=200 npm run tps:testnet:event`。
 6. 如果出现 RPC 限流、pending 堆积或确认超时，先把 `TPS_SEND_CONCURRENCY` 降到 `25`，再增加 `TPS_WAVE_DELAY`。
 7. 对比 `pre` 和 `inline` 两种模式，分别记录 transfer TPS 和端到端 TPS。
 
 ## 注意事项
 
-- `docs/whitelist-users.csv` 已是 sender 私钥和 recipient 地址来源，不要再把私钥复制到 `.env.hashkey.testnet`、`.env` 或终端日志。
+- `docs/whitelist-users.csv` 已是 sender/recipient 私钥和 recipient 地址来源，不要再把私钥复制到 `.env.hashkey.testnet`、`.env` 或终端日志。
 - 如果使用 `.env.hashkey.testnet` 作为模板，只保留空的 `PRIVATE_KEY` / `TPS_PRIVATE_KEYS` 占位；真实 sender 私钥运行时由脚本从 `docs/whitelist-users.csv` 读取。
-- 正式 TPS 压测要求至少 50 个 sender 钱包；小规模冒烟只应降低交易数，不应降低钱包数。
+- 正式 TPS 压测要求至少 25 个 sender 钱包；小规模冒烟只应降低交易数，不应降低钱包数。
 - `TPS_TX_DELAY=0` 会快速打满本地和 RPC 发送能力，测试前先确认 RPC 限流策略。
 - 如果 RPC 返回 pending 堆积或确认超时，降低 `TPS_TX_COUNT` 或增加 sender 数量。
 - balance 模式依赖 recipient balance 解密权限，controller 无法解密 recipient balance 时会在 baseline 阶段失败。

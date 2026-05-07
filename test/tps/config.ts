@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import type { BenchmarkConfig, EncryptionSource, EncryptMode } from "./types";
 
-const MIN_TPS_WALLETS = 50;
+const MIN_TPS_WALLETS = 25;
 const DEFAULT_WALLET_CSV_PATH = "docs/whitelist-users.csv";
 
 function parseInteger(value: string | undefined, fallback: number): number {
@@ -26,7 +26,7 @@ function parseCsvLine(line: string): string[] {
   return line.split(",").map(item => item.trim());
 }
 
-export function parseWalletCsv(csv: string): { privateKeys: string[]; recipientAddresses: string[] } {
+export function parseWalletCsv(csv: string): { privateKeys: string[]; recipientAddresses: string[]; decryptPrivateKeys: string[] } {
   const lines = csv
     .split(/\r?\n/)
     .map(line => line.trim())
@@ -51,9 +51,25 @@ export function parseWalletCsv(csv: string): { privateKeys: string[]; recipientA
     throw new Error("wallet CSV must contain at least two complete wallets");
   }
 
+  const pairs: Array<{
+    sender: { address: string; privateKey: string };
+    recipient: { address: string; privateKey: string };
+  }> = [];
+  for (let index = 0; index + 1 < wallets.length; index += 2) {
+    pairs.push({
+      sender: wallets[index],
+      recipient: wallets[index + 1],
+    });
+  }
+
+  if (pairs.length === 0) {
+    throw new Error("wallet CSV must contain at least one complete sender/recipient pair");
+  }
+
   return {
-    privateKeys: wallets.map(wallet => wallet.privateKey),
-    recipientAddresses: wallets.map((_, index) => wallets[(index + 1) % wallets.length].address),
+    privateKeys: pairs.map(pair => pair.sender.privateKey),
+    recipientAddresses: pairs.map(pair => pair.recipient.address),
+    decryptPrivateKeys: wallets.map(wallet => wallet.privateKey),
   };
 }
 
@@ -87,6 +103,9 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
     privateKeys.push(...walletCsv.privateKeys);
   }
   if (env.PRIVATE_KEY && privateKeys.length === 0) privateKeys.push(env.PRIVATE_KEY);
+  const decryptPrivateKeys = walletCsv?.decryptPrivateKeys.length
+    ? walletCsv.decryptPrivateKeys
+    : privateKeys;
 
   const recipientAddresses = parseList(env.TPS_RECIPIENTS);
   if (env.TPS_RECIPIENT && recipientAddresses.length === 0) {
@@ -139,6 +158,7 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
 
   return {
     privateKeys,
+    decryptPrivateKeys,
     rpcUrl: env.RPC_URL!,
     tokenAddress: env.PUSDC_TOKEN_ADDRESS!,
     aclAddress: env.ACL_ADDRESS!,
@@ -155,7 +175,7 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
     waveSize,
     waveDelayMs,
     settleTimeoutMs: parseInteger(env.TPS_SETTLE_TIMEOUT, 120) * 1000,
-    decryptTimeoutMs: parseInteger(env.TPS_DECRYPT_TIMEOUT, 150000),
+    decryptTimeoutMs: parseInteger(env.TPS_DECRYPT_TIMEOUT, 15000000),
     confirmTimeoutMs: parseInteger(env.TPS_CONFIRM_TIMEOUT, 300) * 1000,
     encryptMode,
     encryptionSource,

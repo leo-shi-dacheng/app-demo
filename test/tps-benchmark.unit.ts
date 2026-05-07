@@ -115,10 +115,15 @@ function generateCsvWallets(count: number): string {
 function testParsesCsvWalletsAndDerivesWhitelistedRecipients() {
   const wallets = parseWalletCsv(generateCsvWallets(50));
 
-  assert.equal(wallets.privateKeys.length, 50);
-  assert.equal(wallets.recipientAddresses.length, 50);
+  assert.equal(wallets.privateKeys.length, 25);
+  assert.equal(wallets.recipientAddresses.length, 25);
+  assert.equal(wallets.decryptPrivateKeys.length, 50);
+  assert.equal(wallets.privateKeys[0], `0x${"1".padStart(64, "0")}`);
+  assert.equal(wallets.privateKeys[1], `0x${"3".padStart(64, "0")}`);
+  assert.equal(wallets.decryptPrivateKeys[1], `0x${"2".padStart(64, "0")}`);
   assert.equal(wallets.recipientAddresses[0], "0x0000000000000000000000000000000000000066");
-  assert.equal(wallets.recipientAddresses[49], "0x0000000000000000000000000000000000000065");
+  assert.equal(wallets.recipientAddresses[1], "0x0000000000000000000000000000000000000068");
+  assert.equal(wallets.recipientAddresses[24], "0x0000000000000000000000000000000000000096");
 }
 
 function testRejectsMissingRecipientsInsteadOfGeneratingRandomAddresses() {
@@ -129,14 +134,14 @@ function testRejectsMissingRecipientsInsteadOfGeneratingRandomAddresses() {
   );
 }
 
-function testRejectsFewerThanFiftyWallets() {
+function testRejectsFewerThanTwentyFiveSenderWallets() {
   assert.throws(
     () =>
       parseBenchmarkConfig({
         ...REQUIRED_ENV,
-        TPS_PRIVATE_KEYS: generatePrivateKeys(49),
+        TPS_PRIVATE_KEYS: generatePrivateKeys(24),
       }),
-    /at least 50 sender wallets/i
+    /at least 25 sender wallets/i
   );
 }
 
@@ -147,7 +152,7 @@ function testRejectsPrivateKeyOnlyConfig() {
         ...REQUIRED_ENV,
         PRIVATE_KEY: "0xabc",
       }),
-    /at least 50 sender wallets/i
+    /at least 25 sender wallets/i
   );
 }
 
@@ -360,7 +365,7 @@ testTrackerDoesNotExitBeforeConfirmationsFinish();
 testBuildsIndependentAddressPairs();
 testParsesCsvWalletsAndDerivesWhitelistedRecipients();
 testRejectsMissingRecipientsInsteadOfGeneratingRandomAddresses();
-testRejectsFewerThanFiftyWallets();
+testRejectsFewerThanTwentyFiveSenderWallets();
 testRejectsPrivateKeyOnlyConfig();
 testAcceptsFiftyWallets();
 testDefaultsBenchmarkAmountToOnePusdc();

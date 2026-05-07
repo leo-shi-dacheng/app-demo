@@ -54,6 +54,7 @@ export async function createRuntime(config: BenchmarkConfig): Promise<BenchmarkR
   if (amountUnits <= 0n) throw new Error("TPS_AMOUNT must be greater than 0");
 
   const senderWallets = config.privateKeys.map(privateKey => new ethers.Wallet(privateKey, provider));
+  const decryptWallets = config.decryptPrivateKeys.map(privateKey => new ethers.Wallet(privateKey, provider));
   const addressPairs = buildAddressPairs(
     senderWallets.map(wallet => wallet.address),
     config.recipientAddresses
@@ -80,6 +81,7 @@ export async function createRuntime(config: BenchmarkConfig): Promise<BenchmarkR
     controllerWallet,
     controllerContract,
     pairs,
+    decryptWallets,
     chainId,
     decimals,
     amountUnits,
@@ -313,7 +315,7 @@ export async function getDecryptedBalanceUnits(
 ): Promise<bigint | null> {
   const decryptWallet = selectDecryptWallet(
     address,
-    runtime.pairs.map(pair => pair.wallet),
+    runtime.decryptWallets,
     runtime.controllerWallet
   );
   const decryptWalletSource = decryptWallet.address.toLowerCase() === address.toLowerCase()
