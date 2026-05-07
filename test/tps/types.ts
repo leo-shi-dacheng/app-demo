@@ -6,6 +6,7 @@ export type EncryptionSource = "sdk" | "trivial";
 
 export interface BenchmarkConfig {
   privateKeys: string[];
+  decryptPrivateKeys: string[];
   rpcUrl: string;
   tokenAddress: string;
   aclAddress: string;
@@ -49,6 +50,7 @@ export interface BenchmarkRuntime {
   controllerWallet: Wallet;
   controllerContract: Contract;
   pairs: RuntimePair[];
+  decryptWallets: Wallet[];
   chainId: number;
   decimals: number;
   amountUnits: bigint;
