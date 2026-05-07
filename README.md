@@ -25,6 +25,7 @@
     - [getTotalHandles](#gettotalhandles)
   - [Decryption](#decryption)
     - [allowForDecryption](#allowfordecryption)
+    - [encrypt](#encrypt)
     - [userDecrypt](#userdecrypt)
 
 
@@ -100,6 +101,7 @@ Commands:
   approve [options]                    Sets a value `amount` of tokens as the allowance of `spender` over the caller's tokens.
   transferFrom [options]               Moves a value `amount` of tokens from `from` to `to` using the allowance mechanism. `value` is then deducted from
                                        the caller's allowance.
+  encrypt [options]                    Generates a real encrypted payload handle using the FHE SDK.
   allowForDecryption [options]         Grants decryption permission for the `handle` to the specified `account`. If no `account` is provided, the
                                        `handle` will be decryptable by anyone.
   userDecrypt [options]                Retrieves the plaintext corresponding to the `handle`.
@@ -374,17 +376,17 @@ npx tsx src/pusdc-cli.ts allowForDecryption --handle <value> [--account <address
 
 Grants decryption permission for the `handle` to the specified `account`. If no `account` is provided, the `handle` will be decryptable by anyone.
 
-<!-- 
 #### encrypt
 
 ```sh
 npx tsx src/pusdc-cli.ts encrypt --input <value>
+npx tsx src/pusdc-cli.ts encrypt --amount <value>
 # Options:
-#   --input <value>  Plaintext value(integer)
+#   --input <value>  Plaintext integer in token base units
+#   --amount <value> Token amount in human-readable units
 ```
 
-Encrypts the `input` and return a `handle`.
--->
+Generates a real encrypted payload handle through the FHE SDK. Use `--input` for raw base-unit integers or `--amount` for token-denominated values.
 
 
 #### userDecrypt
