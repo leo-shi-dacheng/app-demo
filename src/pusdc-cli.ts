@@ -10,6 +10,9 @@ export function registerPUSDCCLI(program: Command) {
 
   removeCommandIfExists(program, 'mint');
   removeCommandIfExists(program, 'burn');
+  removeCommandIfExists(program, 'bindNativeToExecutor');
+  removeCommandIfExists(program, 'releaseNativeFromExecutor');
+  removeCommandIfExists(program, 'balanceOfNative');
 }
 
 if (require.main === module) {

@@ -3,6 +3,29 @@ import { Command } from "commander";
 import type { Erc20Token, EncryptedErc20Token, PrivyTokenWithWhiteList, PrivyTokenWithWhiteListAndDeposit } from "./token";
 import { ethers as EthersT } from "ethers";
 
+type TransferAnalysis = {
+  txHash: string;
+  blockNumber: number;
+  from: string;
+  to: string;
+  amount: { handle: string; formatted?: string; error?: string };
+  beforeSender: { handle: string; formatted?: string; error?: string };
+  afterSender: { handle: string; formatted?: string; error?: string };
+  beforeReceiver: { handle: string; formatted?: string; error?: string };
+  afterReceiver: { handle: string; formatted?: string; error?: string };
+  formattedSenderDelta?: string;
+  formattedReceiverDelta?: string;
+};
+
+type EncryptedUSDCToken = PrivyTokenWithWhiteListAndDeposit & {
+  addRegulator(account: string): Promise<unknown>;
+  removeRegulator(account: string): Promise<unknown>;
+  isRegulator(account: string): Promise<{ isRegulator: boolean }>;
+  getRegulators(): Promise<{ regulators: string[] }>;
+  ensureDecryptAccess(handle: string): Promise<unknown>;
+  analyzeTransfer(txHash: string): Promise<TransferAnalysis>;
+};
+
 export function registerErc20TokenCommands(program: Command, token: Erc20Token) {
   program.option("--feeValue <value>", "fee value", "0");
   program.option("--feeDecimals <number>", "fee decimals", "18");
@@ -120,6 +143,22 @@ export function registerErc20TokenCommands(program: Command, token: Erc20Token) 
 export function registerEncryptedErc20TokenCommands(program: Command, token: EncryptedErc20Token) {
   registerErc20TokenCommands(program, token);
   program
+    .command("encrypt")
+    .description("Generates a real encrypted payload handle using the FHE SDK.")
+    .option("--input <value>", "Plaintext integer in token base units")
+    .option("-a, --amount <value>", "Token amount in human-readable units")
+    .action(async (opts) => {
+      if ((opts.input && opts.amount) || (!opts.input && !opts.amount)) {
+        throw new Error("Provide exactly one of --input or --amount");
+      }
+
+      const result = opts.amount
+        ? await token.encryptAmount(opts.amount)
+        : await token.encryptPlaintext(opts.input);
+      console.log("Encrypted handle:", result.handle);
+    });
+
+  program
     .command("allowForDecryption")
     .description("Grants decryption permission for the `handle` to the specified `account`. If no `account` is provided, the `handle` will be decryptable by anyone.")
     .requiredOption("-h, --handle <value>", "Ciphertext handle(bytes32)")
@@ -192,6 +231,120 @@ export function registerPrivyTokenWithWhiteListCommands(program: Command, token:
 
 export function registerPrivyTokenWithWhiteListAndDepositCommands(program: Command, token: PrivyTokenWithWhiteListAndDeposit) {
   registerPrivyTokenWithWhiteListCommands(program, token);
+
+  program
+    .command("deposit")
+    .description("Deposit a `amount` amount of tokens from erc20 to contract")
+    .requiredOption("-a, --amount <amount>", "Amount to deposit")
+    .action(async (opts) => {
+      await token.deposit(opts.amount);
+    });
+
+  program
+    .command("claim")
+    .description("Claim a `amount` amount of tokens to `to`")
+    .requiredOption("-t, --to <address>", "Recipient address")
+    .requiredOption("-a, --amount <amount>", "Amount to claim")
+    .action(async (opts) => {
+      await token.claim(opts.to, opts.amount);
+    });
+
+  program
+    .command("addOracle")
+    .description("Add a `oracle` (only onwer).")
+    .requiredOption("-o, --oracle <address>", "Oracle address")
+    .action(async (opts) => {
+      await token.addOracle(opts.oracle);
+    });
+
+  program
+    .command("removeOracle")
+    .description("Remove a `oracle` (only onwer).")
+    .requiredOption("-o, --oracle <address>", "Oracle address")
+    .action(async (opts) => {
+      await token.removeOracle(opts.oracle);
+    });
+}
+
+export function registerEncryptedUSDCTokenCommands(program: Command, token: EncryptedUSDCToken) {
+  registerEncryptedErc20TokenCommands(program, token);
+
+  program
+    .command("transferOwnership")
+    .description("Transfers the contract ownership to `to`.")
+    .requiredOption("-t, --to <address>", "The account of new owner")
+    .action(async (opts) => {
+      await token.transferOwnership(opts.to);
+    });
+
+  program
+    .command("addRegulator")
+    .description("Adds an `account` to the regulator role.")
+    .requiredOption("-a, --account <address>", "The account to add as regulator")
+    .action(async (opts) => {
+      await token.addRegulator(opts.account);
+    });
+
+  program
+    .command("removeRegulator")
+    .description("Removes an `account` from the regulator role.")
+    .requiredOption("-a, --account <address>", "The account to remove from regulator")
+    .action(async (opts) => {
+      await token.removeRegulator(opts.account);
+    });
+
+  program
+    .command("isRegulator")
+    .description("Determines whether the `account` is a regulator.")
+    .requiredOption("-a, --account <address>", "The account address")
+    .action(async (opts) => {
+      const { isRegulator } = await token.isRegulator(opts.account);
+      console.log(`Is Regulator of ${opts.account}: ${isRegulator}`);
+    });
+
+  program
+    .command("getRegulators")
+    .description("Retrieves all regulator addresses.")
+    .action(async (_opts) => {
+      const { regulators } = await token.getRegulators();
+      console.log("Regulators:\n", regulators);
+    });
+
+  program
+    .command("getTotalHandles")
+    .description("Retrieves all handles for contract status variables, including historical values.")
+    .action(async (_opts) => {
+      const { totalHandles } = await token.getTotalHandles();
+      console.log("Full handles:\n", totalHandles);
+    });
+
+  program
+    .command("ensureDecryptAccess")
+    .description("Ensures the caller has decryption access to the `handle`.")
+    .requiredOption("-h, --handle <value>", "Ciphertext handle(bytes32)")
+    .action(async (opts) => {
+      await token.ensureDecryptAccess(opts.handle);
+    });
+
+  program
+    .command("analyzeTransfer")
+    .description("Analyzes a transfer tx and derives amount plus pre/post balances. Use a regulator signer for the fullest result.")
+    .requiredOption("--tx <hash>", "Transfer transaction hash")
+    .action(async (opts) => {
+      const result = await token.analyzeTransfer(opts.tx);
+      console.log(`Transfer tx: ${result.txHash}`);
+      console.log(`Block: ${result.blockNumber}`);
+      console.log(`From: ${result.from}`);
+      console.log(`To: ${result.to}`);
+      console.log(`Amount handle: ${result.amount.handle}`);
+      console.log(`Amount plaintext: ${result.amount.formatted ?? "N/A"}` + (result.amount.error ? ` (error: ${result.amount.error})` : ""));
+      console.log(`Sender balance before: ${result.beforeSender.formatted ?? "N/A"} handle: ${result.beforeSender.handle}` + (result.beforeSender.error ? ` (error: ${result.beforeSender.error})` : ""));
+      console.log(`Sender balance after: ${result.afterSender.formatted ?? "N/A"} handle: ${result.afterSender.handle}` + (result.afterSender.error ? ` (error: ${result.afterSender.error})` : ""));
+      console.log(`Receiver balance before: ${result.beforeReceiver.formatted ?? "N/A"} handle: ${result.beforeReceiver.handle}` + (result.beforeReceiver.error ? ` (error: ${result.beforeReceiver.error})` : ""));
+      console.log(`Receiver balance after: ${result.afterReceiver.formatted ?? "N/A"} handle: ${result.afterReceiver.handle}` + (result.afterReceiver.error ? ` (error: ${result.afterReceiver.error})` : ""));
+      console.log(`Derived sender delta: ${result.formattedSenderDelta ?? "N/A"}`);
+      console.log(`Derived receiver delta: ${result.formattedReceiverDelta ?? "N/A"}`);
+    });
 
   program
     .command("deposit")

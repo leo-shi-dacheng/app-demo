@@ -1,0 +1,43 @@
+syntax = "proto3";
+package decryption;
+
+service DecryptionService {
+  rpc Download(DownloadRequest) returns (stream DownloadResponse) {}
+  rpc Decrypt(DecryptRequest) returns (DecryptResponse) {}
+  rpc DecryptHandle(DecryptHandleRequest) returns (DecryptHandleResponse) {}
+}
+
+message DownloadRequest {
+  string key = 1;
+}
+
+message DownloadResponse {
+  bytes content = 1;
+}
+
+message DecryptRequest {
+  bytes ciphertext = 1;
+}
+
+message DecryptResponse {
+  bytes plaintext = 1;
+}
+
+message Ciphertext {
+  string query_params = 1;
+  string query_url = 2;
+  string query_method = 3;
+}
+
+message DecryptHandleRequest {
+  Ciphertext ciphertext = 1;
+}
+
+message Plaintext {
+  string handle = 1;
+  string plaintext = 2;
+}
+
+message DecryptHandleResponse {
+  repeated Plaintext plaintexts = 1;
+}

@@ -60,6 +60,7 @@ export class Erc20Token {
   protected formatHandle(uve: any): any {
     if (typeof uve === "string") return uve;
     if (uve && uve.handle) {
+      if (typeof uve.handle === "string") return uve.handle.startsWith("0x") ? uve.handle : `0x${uve.handle}`;
       return "0x" + Buffer.from(uve.handle).toString("hex");
     }
     return String(uve);
@@ -206,6 +207,22 @@ export class EncryptedErc20Token extends Erc20Token {
       handle,
       { isMock: this.isMock, timeout: timeout }
     );
+  }
+
+  async encryptPlaintext(input: string | number | bigint): Promise<{ amountHandle: any; handle: string }> {
+    const value = BigInt(input);
+    if (value < 0n) throw new Error("Plaintext input must be greater than or equal to 0");
+
+    const amountHandle = await this.encrypt(value);
+    return {
+      amountHandle,
+      handle: this.formatHandle(amountHandle),
+    };
+  }
+
+  async encryptAmount(amount: string): Promise<{ amountHandle: any; handle: string }> {
+    const decimals = await this.decimals();
+    return this.encryptPlaintext(EthersT.parseUnits(amount, decimals));
   }
 
   async allowForDecryption(handle: string, account?: string) {

@@ -3,6 +3,8 @@
   "version": "1.1.0",
   "description": "A demo",
   "dependencies": {
+    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/proto-loader": "^0.8.0",
     "@primuslabs/fhe-sdk": "npm:nc97-fhe-sdk@^0.1.24",
     "@types/node": "^24.5.2",
     "commander": "^14.0.1",
@@ -12,7 +14,11 @@
     "typescript": "^5.9.2"
   },
   "scripts": {
-    "build": "tsc --build"
+    "build": "tsc --build",
+    "tps": "npx tsx test/tps-benchmark.ts",
+    "tps:testnet:smoke": "DOTENV_CONFIG_PATH=.env.hashkey.testnet TPS_MODE=balance TPS_TX_COUNT=1 TPS_TX_DELAY=200 npx tsx test/tps-benchmark.ts",
+    "tps:testnet": "DOTENV_CONFIG_PATH=.env.hashkey.testnet TPS_MODE=balance TPS_ENCRYPT_MODE=pre TPS_TX_COUNT=${TPS_TX_COUNT:-10} TPS_TX_DELAY=0 npx tsx test/tps-benchmark.ts",
+    "tps:testnet:event": "DOTENV_CONFIG_PATH=.env.hashkey.testnet TPS_MODE=event TPS_SETTLEMENT_EVENT=Transfer TPS_ENCRYPT_MODE=pre TPS_TX_COUNT=${TPS_TX_COUNT:-10} TPS_TX_DELAY=0 npx tsx test/tps-benchmark.ts"
   },
   "keywords": [],
   "author": "",
