@@ -162,7 +162,7 @@ function printCompletionObserver(stats: TrackerStats) {
 }
 
 export function getReportTpsMetricLabels(): string[] {
-  return ["Send Rate", "On-chain TPS", "Effective TPS"];
+  return ["Send Rate", "On-chain TPS", "FHE TPS", "Effective TPS"];
 }
 
 function printReport(records: TxRecord[], testStart: number, testEndTime: number, trackerStats: TrackerStats) {
@@ -234,15 +234,22 @@ function printReport(records: TxRecord[], testStart: number, testEndTime: number
     console.log(`  On-chain TPS   : ${C.yellow}${onChainTPS.toFixed(3)} tx/s${C.reset}`);
 
     if (done.length > 0) {
+      // FHE TPS = 1 / Avg off-chain FHE compute（秒），表示链下 FHE 计算的吞吐上限
+      const avgOffChainMs = average(done.map(r => r.completedAt! - (r.onChainAt ?? r.initiatedAt)));
+      const fheTPS = avgOffChainMs > 0 ? 1000 / avgOffChainMs : 0;
+      console.log(`  FHE TPS        : ${C.yellow}${fheTPS.toFixed(3)} tx/s${C.reset}`);
+
       const lastCompletedAt = Math.max(...done.map(r => r.completedAt!));
       const e2eWindowS = (lastCompletedAt - records[0].initiatedAt) / 1000;
       const effectiveTPS = completed / Math.max(e2eWindowS, 0.001);
       console.log(`  Effective TPS  : ${C.cyan}${effectiveTPS.toFixed(3)} tx/s${C.reset}`);
     } else {
+      console.log(`  FHE TPS        : n/a (no balance settlements observed)`);
       console.log(`  Effective TPS  : n/a (no balance settlements observed)`);
     }
   } else {
     console.log(`  On-chain TPS   : n/a (no confirmed transactions)`);
+    console.log(`  FHE TPS        : n/a (no balance settlements observed)`);
     console.log(`  Effective TPS  : n/a (no balance settlements observed)`);
   }
 }

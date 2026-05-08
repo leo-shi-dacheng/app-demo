@@ -241,6 +241,7 @@ function testReportKeepsOnlyOneCompletionTpsMetric() {
   const labels = getReportTpsMetricLabels();
 
   assert(labels.includes("On-chain TPS"));
+  assert(labels.includes("FHE TPS"));
   assert(labels.includes("Effective TPS"));
   assert(!labels.includes("Complete TPS"));
 }
