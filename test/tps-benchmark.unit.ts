@@ -17,6 +17,7 @@ import { getReportTpsMetricLabels, planRecipientBaselines, planSendWaves } from 
 import {
   buildDecryptPayload,
   formatDecryptFailure,
+  formatDecryptHandleLog,
   isDecryptPendingError,
   isStaleDecryptClientError,
   selectDecryptWallet,
@@ -186,7 +187,7 @@ function testDefaultsDecryptTimeoutToLongGrpcDeadline() {
     TPS_PRIVATE_KEYS: generatePrivateKeys(50),
   });
 
-  assert.equal(config.decryptTimeoutMs, 150_000);
+  assert.equal(config.decryptTimeoutMs, 15_000_000);
 }
 
 function testParsesTransferValueOverride() {
@@ -199,27 +200,15 @@ function testParsesTransferValueOverride() {
   assert.equal(config.transferValue, "1");
 }
 
-function testParsesTrivialEncryptionSource() {
-  const config = parseBenchmarkConfig({
-    ...REQUIRED_ENV,
-    TPS_PRIVATE_KEYS: generatePrivateKeys(50),
-    TPS_ENCRYPTION_SOURCE: "trivial",
-    FHE_EXECUTOR_ADDRESS: "0x0000000000000000000000000000000000000005",
-  });
-
-  assert.equal(config.encryptionSource, "trivial");
-  assert.equal(config.fheExecutorAddress, "0x0000000000000000000000000000000000000005");
-}
-
-function testRejectsTrivialEncryptionWithoutExecutor() {
+function testRejectsTrivialEncryptionSource() {
   assert.throws(
     () => parseBenchmarkConfig({
       ...REQUIRED_ENV,
       TPS_PRIVATE_KEYS: generatePrivateKeys(50),
       TPS_ENCRYPTION_SOURCE: "trivial",
-      TPS_TRIVIAL_HANDLE: TEST_HANDLE,
+      FHE_EXECUTOR_ADDRESS: "0x0000000000000000000000000000000000000005",
     }),
-    /FHE_EXECUTOR_ADDRESS is required/i
+    /TPS_ENCRYPTION_SOURCE must be "sdk"/i
   );
 }
 
@@ -305,6 +294,20 @@ function testSelectsRecipientWalletForBalanceDecrypt() {
   assert.equal(selected.address, recipient.address);
 }
 
+function testFormatsDecryptHandleLogWithFullHandle() {
+  const message = formatDecryptHandleLog({
+    accountAddress: "0x71cffec6d7c97fcd0aca68217faa0fc684eb1fb1",
+    decryptWalletAddress: "0x71CFFEc6d7C97fCD0ACA68217FAa0Fc684eb1fB1",
+    decryptWalletSource: "account",
+    handle: TEST_HANDLE,
+  });
+
+  assert(message.includes("account=0x71cffec6d7c97fcd0aca68217faa0fc684eb1fb1"));
+  assert(message.includes("decryptWallet=0x71CFFEc6d7C97fCD0ACA68217FAa0Fc684eb1fB1"));
+  assert(message.includes("source=account"));
+  assert(message.includes(`handle=${TEST_HANDLE}`));
+}
+
 function testFormatsDecryptFailureWithHandleAndAccountContext() {
   const message = formatDecryptFailure({
     accountAddress: "0x71cffec6d7c97fcd0aca68217faa0fc684eb1fb1",
@@ -372,8 +375,7 @@ testAcceptsFiftyWallets();
 testDefaultsBenchmarkAmountToOnePusdc();
 testDefaultsDecryptTimeoutToLongGrpcDeadline();
 testParsesTransferValueOverride();
-testParsesTrivialEncryptionSource();
-testRejectsTrivialEncryptionWithoutExecutor();
+testRejectsTrivialEncryptionSource();
 testRegistersEncryptCommandForHandleGeneration();
 testAddressWhitelistKeyMatchesCastKeccakAddress();
 testReportKeepsOnlyOneCompletionTpsMetric();
@@ -382,6 +384,7 @@ testPlansOnlyRecipientsTouchedByPlannedTransfers();
 testRejectsWaveSizeLargerThanPairCount();
 testParsesSendSchedulerConfig();
 testSelectsRecipientWalletForBalanceDecrypt();
+testFormatsDecryptHandleLogWithFullHandle();
 testFormatsDecryptFailureWithHandleAndAccountContext();
 testRecognizesDecryptPending404Error();
 testRecognizesStaleGrpcClientError();

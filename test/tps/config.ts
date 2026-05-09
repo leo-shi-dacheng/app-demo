@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import type { BenchmarkConfig, EncryptionSource, EncryptMode } from "./types";
+import type { BenchmarkConfig, EncryptMode } from "./types";
 
 const MIN_TPS_WALLETS = 25;
 const DEFAULT_WALLET_CSV_PATH = "docs/whitelist-users.csv";
@@ -90,10 +90,10 @@ function parseEncryptMode(env: NodeJS.ProcessEnv): EncryptMode {
   return "pre";
 }
 
-function parseEncryptionSource(env: NodeJS.ProcessEnv): EncryptionSource {
+function validateEncryptionSource(env: NodeJS.ProcessEnv): void {
   const source = (env.TPS_ENCRYPTION_SOURCE || "sdk").trim().toLowerCase();
-  if (source === "sdk" || source === "trivial") return source;
-  throw new Error(`TPS_ENCRYPTION_SOURCE must be "sdk" or "trivial", got "${source}"`);
+  if (source === "sdk") return;
+  throw new Error(`TPS_ENCRYPTION_SOURCE must be "sdk", got "${source}"`);
 }
 
 export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): BenchmarkConfig {
@@ -144,7 +144,7 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
   const sendConcurrency = parsePositiveInteger(env.TPS_SEND_CONCURRENCY, waveSize, "TPS_SEND_CONCURRENCY");
   const waveDelayMs = parseInteger(env.TPS_WAVE_DELAY, 0);
   const encryptMode = parseEncryptMode(env);
-  const encryptionSource = parseEncryptionSource(env);
+  validateEncryptionSource(env);
   if (waveDelayMs < 0) throw new Error("TPS_WAVE_DELAY must be greater than or equal to 0");
   if (sendConcurrency > waveSize) {
     throw new Error("TPS_SEND_CONCURRENCY cannot exceed TPS_WAVE_SIZE");
@@ -152,17 +152,12 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
   if (encryptMode === "pre" && txDelayMs === 0 && !txCount) {
     throw new Error("TPS_TX_COUNT is required when TPS_ENCRYPT_MODE=pre and TPS_TX_DELAY=0");
   }
-  if (encryptionSource === "trivial" && !env.FHE_EXECUTOR_ADDRESS) {
-    throw new Error("FHE_EXECUTOR_ADDRESS is required when TPS_ENCRYPTION_SOURCE=trivial");
-  }
-
   return {
     privateKeys,
     decryptPrivateKeys,
     rpcUrl: env.RPC_URL!,
     tokenAddress: env.PUSDC_TOKEN_ADDRESS!,
     aclAddress: env.ACL_ADDRESS!,
-    fheExecutorAddress: env.FHE_EXECUTOR_ADDRESS || "",
     whitelistAddress: env.WHITELIST_ADDRESS || "",
     durationSeconds: parseInteger(env.TPS_DURATION, 60),
     txCount,
@@ -178,7 +173,6 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
     decryptTimeoutMs: parseInteger(env.TPS_DECRYPT_TIMEOUT, 15000000),
     confirmTimeoutMs: parseInteger(env.TPS_CONFIRM_TIMEOUT, 300) * 1000,
     encryptMode,
-    encryptionSource,
     recipientAddresses,
     transferValue: env.TPS_TRANSFER_VALUE || "",
     isMock: env.MOCK_TEST === "ON",
