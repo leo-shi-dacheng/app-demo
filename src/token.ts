@@ -13,7 +13,6 @@ export class Erc20Token {
   feeValue: bigint = 0n;
 
   protected verbose: number = 0;
-  protected readonly isMock = process.env.MOCK_TEST === "ON";
 
   readonly provider: EthersT.JsonRpcProvider;
   readonly signer: Wallet | null;
@@ -194,8 +193,7 @@ export class EncryptedErc20Token extends Erc20Token {
       value,
       this.getFheType(),
       await this.getChainID(),
-      null,
-      { isMock: this.isMock }
+      null
     );
   }
 
@@ -205,7 +203,7 @@ export class EncryptedErc20Token extends Erc20Token {
       this.ACL_ADDRESS,
       this.getFheType(),
       handle,
-      { isMock: this.isMock, timeout: timeout }
+      { timeout: timeout }
     );
   }
 

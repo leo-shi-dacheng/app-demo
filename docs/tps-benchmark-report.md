@@ -11,7 +11,6 @@
 正式报告必须满足：
 
 - `TPS_ENCRYPTION_SOURCE=sdk`
-- `MOCK_TEST` 未开启
 - 使用真实已充值、已 whitelist 的 sender 钱包
 - 保存完整命令、commit hash、开始时间、结束时间和原始终端输出摘要
 

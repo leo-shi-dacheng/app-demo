@@ -157,6 +157,7 @@ export function isDecryptPendingError(error: unknown): boolean {
   const message = (error as any)?.message ?? String(error);
   return (
     (message.includes('"code":404') && message.includes("decryption is not available")) ||
+    (message.includes('"code":500') && message.includes("no rows returned")) ||
     message.includes("DEADLINE_EXCEEDED")
   );
 }
@@ -348,8 +349,7 @@ export async function getDecryptedBalanceUnits(
         decryptWallet,
         config.aclAddress,
         FheType.ve_uint256,
-        handle,
-        { isMock: config.isMock }
+        handle
       ),
       config.decryptTimeoutMs,
       `decrypt timeout after ${config.decryptTimeoutMs}ms`
@@ -383,8 +383,7 @@ export async function encryptTransferAmount(
     runtime.amountUnits,
     FheType.ve_uint256,
     runtime.chainId,
-    null,
-    { isMock: config.isMock }
+    null
   );
   const encryptedAt = Date.now();
 

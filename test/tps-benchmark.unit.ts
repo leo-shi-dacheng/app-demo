@@ -333,6 +333,10 @@ function testRecognizesDecryptPending404Error() {
     isDecryptPendingError(new Error('13 INTERNAL: {"code":404,"error":"decryption is not available"}')),
     true
   );
+  assert.equal(
+    isDecryptPendingError(new Error('13 INTERNAL: {"code":500,"error":"no rows returned"}')),
+    true
+  );
   assert.equal(isDecryptPendingError(new Error("4 DEADLINE_EXCEEDED: Deadline exceeded after 0.001s")), true);
   assert.equal(isDecryptPendingError(new Error("14 UNAVAILABLE: No connection established")), false);
 }

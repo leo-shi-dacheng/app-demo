@@ -175,7 +175,6 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
     encryptMode,
     recipientAddresses,
     transferValue: env.TPS_TRANSFER_VALUE || "",
-    isMock: env.MOCK_TEST === "ON",
   };
 }
 

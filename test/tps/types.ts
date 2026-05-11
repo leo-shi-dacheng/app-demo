@@ -26,7 +26,6 @@ export interface BenchmarkConfig {
   encryptMode: EncryptMode;
   recipientAddresses: string[];
   transferValue: string;
-  isMock: boolean;
 }
 
 export interface AddressPair {
