@@ -173,7 +173,7 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
     sendConcurrency,
     waveSize,
     waveDelayMs,
-    settleTimeoutMs: parseInteger(env.TPS_SETTLE_TIMEOUT, 120) * 1000,
+    settleTimeoutMs: parseInteger(env.TPS_SETTLE_TIMEOUT, 1800) * 1000,
     decryptTimeoutMs: parseInteger(env.TPS_DECRYPT_TIMEOUT, 15000000),
     confirmTimeoutMs: parseInteger(env.TPS_CONFIRM_TIMEOUT, 300) * 1000,
     encryptMode,
