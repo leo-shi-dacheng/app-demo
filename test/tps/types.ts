@@ -2,7 +2,6 @@ import type { Contract, JsonRpcProvider, Wallet } from "ethers";
 
 export type CompletionMode = "balance" | "event";
 export type EncryptMode = "pre" | "inline";
-export type EncryptionSource = "sdk" | "trivial";
 
 export interface BenchmarkConfig {
   privateKeys: string[];
@@ -10,7 +9,6 @@ export interface BenchmarkConfig {
   rpcUrl: string;
   tokenAddress: string;
   aclAddress: string;
-  fheExecutorAddress: string;
   whitelistAddress: string;
   durationSeconds: number;
   txCount?: number;
@@ -26,10 +24,8 @@ export interface BenchmarkConfig {
   decryptTimeoutMs: number;
   confirmTimeoutMs: number;
   encryptMode: EncryptMode;
-  encryptionSource: EncryptionSource;
   recipientAddresses: string[];
   transferValue: string;
-  isMock: boolean;
 }
 
 export interface AddressPair {

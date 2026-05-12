@@ -4,15 +4,13 @@
 
 ## 当前状态
 
-本报告需要使用真实 SDK 加密路径重新生成。旧版 1000 tx 结果依赖 `TPS_ENCRYPTION_SOURCE=trivial` / 固定 handle 调试路径，不能代表 `@primuslabs/fhe-sdk` 真实生成 handle 后的压测结果。
+本报告需要使用真实 SDK 加密路径重新生成。旧版 1000 tx 结果依赖调试 handle 路径，不能代表 `@primuslabs/fhe-sdk` 真实生成 handle 后的压测结果。
 
 ## 重跑要求
 
 正式报告必须满足：
 
 - `TPS_ENCRYPTION_SOURCE=sdk`
-- 不设置 `TPS_TRIVIAL_HANDLE`
-- `MOCK_TEST` 未开启
 - 使用真实已充值、已 whitelist 的 sender 钱包
 - 保存完整命令、commit hash、开始时间、结束时间和原始终端输出摘要
 

@@ -159,7 +159,6 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 - `TPS_CONFIRM_TIMEOUT`：等待链上确认的超时时间，单位秒。
 - `TPS_SETTLE_TIMEOUT`：最后一笔确认后等待 FHE settlement 的超时时间，单位秒。
 - `TPS_DECRYPT_TIMEOUT`：单次 balance 解密总超时时间，单位 ms，默认 `15000000`。gRPC 解密会复用 keepalive 长连接；如果遇到 `404 decryption is not available` 或 `DEADLINE_EXCEEDED`，会在该总超时内轮询重试。
-- `MOCK_TEST=ON`：启用 FHE SDK mock 模式；正式测试网压测不要设置。
 
 ## 指标解读
 

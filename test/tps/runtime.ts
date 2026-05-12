@@ -12,12 +12,6 @@ const WHITELIST_ABI = [
   "function verifyWhitelisted(bytes32 accountHash) view returns (bool)",
 ];
 
-const FHE_EXECUTOR_ABI = [
-  "function trivialEncrypt(uint256 pt, uint8 toType) returns (bytes32)",
-];
-
-const UINT256_FHE_TYPE = 6;
-const ATTESTATION_PAYLOAD_TYPE = 0;
 const DECRYPTION_PROTO_PATH = path.resolve(__dirname, "decryption.proto");
 
 type GrpcCiphertext = {
@@ -124,12 +118,27 @@ interface DecryptFailureContext {
   error: unknown;
 }
 
+interface DecryptHandleLogContext {
+  accountAddress: string;
+  decryptWalletAddress: string;
+  decryptWalletSource: "account" | "controller";
+  handle: unknown;
+}
+
 function formatValue(value: unknown): string {
   if (value === undefined) return "unavailable";
   if (value === null) return "null";
   if (typeof value === "string") return value;
   if (typeof value === "bigint") return value.toString();
   return String(value);
+}
+
+export function formatDecryptHandleLog(context: DecryptHandleLogContext): string {
+  return `[decrypt] handle ` +
+    `account=${context.accountAddress} ` +
+    `decryptWallet=${context.decryptWalletAddress} ` +
+    `source=${context.decryptWalletSource} ` +
+    `handle=${formatValue(context.handle)}`;
 }
 
 export function formatDecryptFailure(context: DecryptFailureContext): string {
@@ -148,6 +157,7 @@ export function isDecryptPendingError(error: unknown): boolean {
   const message = (error as any)?.message ?? String(error);
   return (
     (message.includes('"code":404') && message.includes("decryption is not available")) ||
+    (message.includes('"code":500') && message.includes("no rows returned")) ||
     message.includes("DEADLINE_EXCEEDED")
   );
 }
@@ -325,6 +335,12 @@ export async function getDecryptedBalanceUnits(
 
   try {
     handle = String(await runtime.controllerContract.balanceOf(address));
+    console.log(formatDecryptHandleLog({
+      accountAddress: address,
+      decryptWalletAddress: decryptWallet.address,
+      decryptWalletSource,
+      handle,
+    }));
     if (process.env.DECRYPTION_RPC_URL) {
       return await decryptViaGrpcBridge(decryptWallet, config.aclAddress, handle, config);
     }
@@ -333,8 +349,7 @@ export async function getDecryptedBalanceUnits(
         decryptWallet,
         config.aclAddress,
         FheType.ve_uint256,
-        handle,
-        { isMock: config.isMock }
+        handle
       ),
       config.decryptTimeoutMs,
       `decrypt timeout after ${config.decryptTimeoutMs}ms`
@@ -362,25 +377,14 @@ export async function encryptTransferAmount(
   id: number
 ): Promise<PreparedTransfer> {
   const startedAt = Date.now();
-  const amountHandle = config.encryptionSource === "trivial"
-    ? {
-      handle: await new ethers.Contract(
-        config.fheExecutorAddress,
-        FHE_EXECUTOR_ABI,
-        runtime.provider
-      ).trivialEncrypt.staticCall(runtime.amountUnits, UINT256_FHE_TYPE),
-      dataType: ATTESTATION_PAYLOAD_TYPE,
-      data: ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [runtime.amountUnits]),
-    }
-    : await requestEncrypt(
-      pair.wallet,
-      config.aclAddress,
-      runtime.amountUnits,
-      FheType.ve_uint256,
-      runtime.chainId,
-      null,
-      { isMock: config.isMock }
-    );
+  const amountHandle = await requestEncrypt(
+    pair.wallet,
+    config.aclAddress,
+    runtime.amountUnits,
+    FheType.ve_uint256,
+    runtime.chainId,
+    null
+  );
   const encryptedAt = Date.now();
 
   return {
