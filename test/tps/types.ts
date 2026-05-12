@@ -10,6 +10,7 @@ export interface BenchmarkConfig {
   tokenAddress: string;
   aclAddress: string;
   whitelistAddress: string;
+  settlementContractAddress: string;
   durationSeconds: number;
   txCount?: number;
   amount: string;
@@ -45,6 +46,7 @@ export interface BenchmarkRuntime {
   provider: JsonRpcProvider;
   controllerWallet: Wallet;
   controllerContract: Contract;
+  settlementContract?: Contract;
   pairs: RuntimePair[];
   decryptWallets: Wallet[];
   chainId: number;

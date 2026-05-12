@@ -4,6 +4,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import { estimateFheFee, FheType, requestDecrypt, requestEncrypt } from "@primuslabs/fhe-sdk";
 import { PUSDCTokenV2_1_ABI } from "../../src/abis/PUSDCTokenV2_1_ABI";
+import { AlphatrionReward_ABI } from "../../src/abis/AlphatrionReward_ABI";
 import type { BenchmarkConfig, BenchmarkRuntime, PreparedTransfer, RuntimePair } from "./types";
 import { addressWhitelistKey, parseTokenUnits, sleep, withTimeout } from "./metrics";
 import { buildAddressPairs } from "./wallet-plan";
@@ -42,6 +43,9 @@ export async function createRuntime(config: BenchmarkConfig): Promise<BenchmarkR
   const provider = new ethers.JsonRpcProvider(config.rpcUrl);
   const controllerWallet = new ethers.Wallet(config.privateKeys[0], provider);
   const controllerContract = new ethers.Contract(config.tokenAddress, PUSDCTokenV2_1_ABI, controllerWallet);
+  const settlementContract = config.settlementContractAddress
+    ? new ethers.Contract(config.settlementContractAddress, AlphatrionReward_ABI, provider)
+    : undefined;
   const chainId = Number((await provider.getNetwork()).chainId);
   const decimals = Number(await controllerContract.decimals());
   const amountUnits = parseTokenUnits(config.amount, decimals);
@@ -74,6 +78,7 @@ export async function createRuntime(config: BenchmarkConfig): Promise<BenchmarkR
     provider,
     controllerWallet,
     controllerContract,
+    settlementContract,
     pairs,
     decryptWallets,
     chainId,

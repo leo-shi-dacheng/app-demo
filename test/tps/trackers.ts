@@ -5,7 +5,6 @@ import {
   fmt,
   formatTokenUnits,
   isTrackerComplete,
-  markCompletedByObservedSettlements,
   markCompletedByRecipientSettlements,
   sleep,
 } from "./metrics";
@@ -112,6 +111,10 @@ export async function trackViaEvent(
   config: BenchmarkConfig,
   state: TrackerState
 ): Promise<TrackerStats> {
+  if (!runtime.settlementContract) {
+    throw new Error("SETTLEMENT_ADDRESS is required for event mode");
+  }
+
   console.log(`\n${C.cyan}[tracker] event mode, event=${config.settlementEvent}${C.reset}`);
 
   const stats: TrackerStats = {
@@ -122,25 +125,61 @@ export async function trackViaEvent(
     decryptLatenciesMs: [],
     observedEvents: 0,
   };
-  const markObserved = () => {
-    if (!stats.observedEvents) return;
-    const completedAt = Date.now();
-    const before = state.records.filter(r => r.completedAt).length;
-    markCompletedByObservedSettlements(state.records, stats.observedEvents, completedAt);
-    if (state.records.filter(r => r.completedAt).length > before) {
-      logMarked(state.records, completedAt, "event");
-    }
-  };
 
-  runtime.controllerContract.on(config.settlementEvent, () => {
-    stats.observedEvents = (stats.observedEvents || 0) + 1;
-    markObserved();
-  });
+  const provider = runtime.provider;
+  const contract = runtime.settlementContract;
+  const eventTopic = contract.interface.getEvent(config.settlementEvent)?.topicHash;
+  if (!eventTopic) throw new Error(`Event "${config.settlementEvent}" not found in settlement contract ABI`);
+  const eventAddress = await contract.getAddress();
+  console.log(`${C.dim}[tracker] event topic=${eventTopic}, contract=${eventAddress}${C.reset}`);
+
+  const txByHash = new Map<string, TxRecord>();
+  let lastCheckedBlock = await provider.getBlockNumber();
 
   while (true) {
     await sleep(1000);
     stats.polls++;
-    markObserved();
+
+    try {
+      const currentBlock = await provider.getBlockNumber();
+      if (currentBlock > lastCheckedBlock) {
+        const logs = await provider.getLogs({
+          address: eventAddress,
+          topics: [eventTopic],
+          fromBlock: lastCheckedBlock + 1,
+          toBlock: currentBlock,
+        });
+        for (const log of logs) {
+          const jobId = log.topics[1]; // indexed bytes32 = transfer txHash
+          if (!jobId) continue;
+          for (const r of state.records) {
+            if (!txByHash.has(r.txHash.toLowerCase())) {
+              txByHash.set(r.txHash.toLowerCase(), r);
+            }
+          }
+          const record = txByHash.get(jobId.toLowerCase());
+          if (!record || record.completedAt || record.error) continue;
+          record.completedAt = Date.now();
+          stats.observedEvents = (stats.observedEvents || 0) + 1;
+          const total = record.completedAt - record.initiatedAt;
+          const offChain = record.completedAt - (record.onChainAt ?? record.initiatedAt);
+          console.log(
+            `${C.green}[TX ${record.id}] complete (event) ` +
+            `total=${fmt(total)} off-chain=${fmt(offChain)} ` +
+            `jobId=${jobId.slice(0, 12)}...${C.reset}`
+          );
+        }
+        if (logs.length > 0) {
+          console.log(
+            `${C.dim}[tracker] poll #${stats.polls}: ${logs.length} log(s) in blocks ${lastCheckedBlock + 1}-${currentBlock}, ` +
+            `observed=${stats.observedEvents}${C.reset}`
+          );
+        }
+        lastCheckedBlock = currentBlock;
+      }
+    } catch (e: any) {
+      console.log(`${C.yellow}[tracker] getLogs error: ${e?.message ?? e}${C.reset}`);
+    }
 
     const allSent = state.isSendDone();
     const allConfirmed = state.records.every(r => r.onChainAt || r.error);
@@ -154,6 +193,5 @@ export async function trackViaEvent(
     }
   }
 
-  runtime.controllerContract.removeAllListeners(config.settlementEvent);
   return stats;
 }

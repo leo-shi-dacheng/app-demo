@@ -137,6 +137,9 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
   if (completionMode === "event" && !env.TPS_SETTLEMENT_EVENT) {
     throw new Error("TPS_SETTLEMENT_EVENT is required when TPS_MODE=event");
   }
+  if (completionMode === "event" && !env.SETTLEMENT_ADDRESS) {
+    throw new Error("SETTLEMENT_ADDRESS is required when TPS_MODE=event");
+  }
 
   const txCount = env.TPS_TX_COUNT ? parseInteger(env.TPS_TX_COUNT, 0) : undefined;
   const txDelayMs = parseInteger(env.TPS_TX_DELAY, 200);
@@ -159,6 +162,7 @@ export function parseBenchmarkConfig(env: NodeJS.ProcessEnv = process.env): Benc
     tokenAddress: env.PUSDC_TOKEN_ADDRESS!,
     aclAddress: env.ACL_ADDRESS!,
     whitelistAddress: env.WHITELIST_ADDRESS || "",
+    settlementContractAddress: env.SETTLEMENT_ADDRESS || "",
     durationSeconds: parseInteger(env.TPS_DURATION, 60),
     txCount,
     amount: env.TPS_AMOUNT || "1",
