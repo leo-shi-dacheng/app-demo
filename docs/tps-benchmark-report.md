@@ -35,7 +35,7 @@ npm run tps:testnet:event
 - 完成观测：
 - Send Rate：
 - On-chain TPS：
-- Effective TPS：
+- End-to-End TPS：
 - 平均链上确认耗时：
 - 平均端到端耗时：
 
