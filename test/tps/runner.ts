@@ -153,7 +153,7 @@ function printCompletionObserver(stats: TrackerStats) {
     console.log(`  Poll rounds    : ${stats.polls}`);
     console.log(`  Decrypt calls  : ${stats.decryptAttempts} (${successfulDecrypts} ok / ${stats.decryptFailures} failed)`);
     console.log(`  Avg decrypt    : ${avgDecryptMs}`);
-    console.log(`  TPS note       : Effective TPS includes polling and decrypt observation delay.\n`);
+    console.log(`  TPS note       : End-to-End TPS includes polling and decrypt observation delay.\n`);
     return;
   }
 
@@ -162,7 +162,7 @@ function printCompletionObserver(stats: TrackerStats) {
 }
 
 export function getReportTpsMetricLabels(): string[] {
-  return ["Send Rate", "On-chain TPS", "FHE TPS", "Effective TPS"];
+  return ["Send Rate", "On-chain TPS", "FHE TPS", "End-to-End TPS"];
 }
 
 function printReport(records: TxRecord[], testStart: number, testEndTime: number, trackerStats: TrackerStats) {
@@ -240,19 +240,19 @@ function printReport(records: TxRecord[], testStart: number, testEndTime: number
       const fheTPS = completed / Math.max(fheWindowS, 0.001);
       console.log(`  FHE TPS        : ${C.yellow}${fheTPS.toFixed(6)} tx/s${C.reset}  (window=${fheWindowS.toFixed(1)}s)`);
 
-      // Effective TPS: window from first initiation to last completion
+      // End-to-End TPS: window from first initiation to last completion
       const firstInitiatedAt = Math.min(...done.map(r => r.initiatedAt));
       const e2eWindowS = (lastCompletedAt - firstInitiatedAt) / 1000;
       const effectiveTPS = completed / Math.max(e2eWindowS, 0.001);
-      console.log(`  Effective TPS  : ${C.cyan}${effectiveTPS.toFixed(6)} tx/s${C.reset}  (window=${e2eWindowS.toFixed(1)}s)`);
+      console.log(`  End-to-End TPS : ${C.cyan}${effectiveTPS.toFixed(6)} tx/s${C.reset}  (window=${e2eWindowS.toFixed(1)}s)`);
     } else {
       console.log(`  FHE TPS        : n/a (no balance settlements observed)`);
-      console.log(`  Effective TPS  : n/a (no balance settlements observed)`);
+      console.log(`  End-to-End TPS : n/a (no balance settlements observed)`);
     }
   } else {
     console.log(`  On-chain TPS   : n/a (no confirmed transactions)`);
     console.log(`  FHE TPS        : n/a (no balance settlements observed)`);
-    console.log(`  Effective TPS  : n/a (no balance settlements observed)`);
+    console.log(`  End-to-End TPS : n/a (no balance settlements observed)`);
   }
 }
 

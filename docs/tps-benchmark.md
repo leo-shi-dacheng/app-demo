@@ -8,7 +8,7 @@
 
 - `Encrypt TPS`：只衡量 `requestEncrypt` 生成加密 payload 的吞吐。
 - `On-chain TPS`：衡量已广播 transfer 在链上确认的吞吐，不包含后续 FHE settlement。
-- `Effective TPS`：衡量从客户端发起到完成观测信号出现的端到端吞吐。
+- `End-to-End TPS`：衡量从客户端发起到完成观测信号出现的端到端吞吐。
 
 如果目标是评估 transfer TPS，推荐使用“预加密 + 多钱包独立 pair”模式：
 
@@ -131,7 +131,7 @@ npm run tps:testnet:event
 测完整用户链路：
 
 ```bash
-TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchmark.ts
+TPS_ENCRYPT_MODE=inline TPS_DURATION=600 TPS_TX_DELAY=200 npx tsx test/tps-benchmark.ts
 ```
 
 ## 关键参数
@@ -148,7 +148,7 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 - `TPS_ENCRYPTION_SOURCE=trivial`：仅用于调试 attestation payload 路径，payload 形态为 `dataType=0` + ABI 编码 amount。该模式必须设置 `FHE_EXECUTOR_ADDRESS`，并通过 `trivialEncrypt` 现场生成 handle；不要使用固定 handle 做真实压测。
 - `TPS_TRANSFER_VALUE`：每笔 transfer 随交易发送的 HSK 数量，单位 HSK。HashKey testnet PUSDC transfer 当前需要 `1`。
 - `TPS_TX_COUNT`：总发送交易数。`TPS_TX_DELAY=0` 时必须设置。
-- `TPS_DURATION`：发送阶段最长持续时间。
+- `TPS_DURATION`：发送阶段最长持续时间，单位秒，默认 `600`。
 - `TPS_TX_DELAY`：用于按 duration 推导交易数的旧参数。并发 wave 模式下，发送节流优先使用 `TPS_WAVE_DELAY`。
 - `TPS_WAVE_SIZE`：每个发送 wave 包含的交易数，默认等于 sender pair 数。为了保证同一钱包 nonce 顺序，不能大于 sender pair 数。
 - `TPS_SEND_CONCURRENCY`：每个 wave 内同时提交到 RPC 的交易数，默认等于 `TPS_WAVE_SIZE`。如果 RPC 限流，可降低到 `25` 或更低。
@@ -157,7 +157,7 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 - `TPS_MODE=event`：通过事件判断完成，需要设置 `TPS_SETTLEMENT_EVENT`。只有监听到真正表示 settlement 完成的事件时，才可以把该模式作为完成 TPS 口径。
 - `TPS_POLL_INTERVAL`：balance 模式轮询 recipient balance 的间隔，单位 ms，默认 `5000`。调小会减少观测延迟，但会增加解密请求压力。
 - `TPS_CONFIRM_TIMEOUT`：等待链上确认的超时时间，单位秒。
-- `TPS_SETTLE_TIMEOUT`：最后一笔确认后等待 FHE settlement 的超时时间，单位秒。
+- `TPS_SETTLE_TIMEOUT`：最后一笔确认后等待 FHE settlement 的超时时间，单位秒，默认 `3600`。
 - `TPS_DECRYPT_TIMEOUT`：单次 balance 解密总超时时间，单位 ms，默认 `15000000`。gRPC 解密会复用 keepalive 长连接；如果遇到 `404 decryption is not available` 或 `DEADLINE_EXCEEDED`，会在该总超时内轮询重试。
 
 ## 指标解读
@@ -165,15 +165,15 @@ TPS_ENCRYPT_MODE=inline TPS_DURATION=60 TPS_TX_DELAY=200 npx tsx test/tps-benchm
 - `Encrypt TPS`：加密准备阶段的吞吐。`pre` 模式下它不应计入 transfer TPS。
 - `Send Rate`：客户端广播交易速率，主要反映本地加密、RPC、nonce 管理和发送循环。
 - `On-chain TPS`：`confirmed / (lastConfirmedAt - firstConfirmedAt)`，只统计 receipt 成功的链上 transfer 吞吐。
-- `Effective TPS`：`completed / (lastCompletedAt - firstInitiatedAt)`，用于观察用户端到端体验。`TPS_MODE=balance` 下，只有解密确认余额增加后才计入 completed，因此会比理论链上 TPS 更保守。
+- `End-to-End TPS`：`completed / (lastCompletedAt - firstInitiatedAt)`，用于观察用户端到端体验。`TPS_MODE=balance` 下，只有解密确认余额增加后才计入 completed，因此会比理论链上 TPS 更保守。
 
 `Completion observer` 会输出完成观测层的额外信息：
 
 - `Poll interval`：每轮 balance 检查的间隔。真实到账发生在两次轮询之间时，最多会额外多记一个 poll interval。
 - `Poll rounds`：完成 tracker 实际轮询次数。
-- `Decrypt calls` / `Avg decrypt`：balance 模式为确认完成而发起的解密次数和平均耗时。这些耗时会计入 `Effective TPS` 的观察时间。
+- `Decrypt calls` / `Avg decrypt`：balance 模式为确认完成而发起的解密次数和平均耗时。这些耗时会计入 `End-to-End TPS` 的观察时间。
 
-做 transfer TPS 对比时，优先记录 `On-chain TPS`，并确保使用 `TPS_ENCRYPT_MODE=pre`。如果需要端到端体验口径，再参考 `Effective TPS`；如果 tracker 没有观察到完成信号，报告仍会输出 `On-chain TPS`，但 `Effective TPS` 会显示为不可用。
+做 transfer TPS 对比时，优先记录 `On-chain TPS`，并确保使用 `TPS_ENCRYPT_MODE=pre`。如果需要端到端体验口径，再参考 `End-to-End TPS`；如果 tracker 没有观察到完成信号，报告仍会输出 `On-chain TPS`，但 `End-to-End TPS` 会显示为不可用。
 
 ## 推荐压测流程
 
