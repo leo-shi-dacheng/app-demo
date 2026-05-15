@@ -2,6 +2,7 @@ import { ethers as EthersT, Wallet } from "ethers";
 import { PrivyTokenU64V2_1_ABI } from "./abis/PrivyTokenU64V2_1_ABI";
 import { OZERC20_ABI } from "./abis/OZERC20_ABI";
 import { PUSDCTokenV2_1_ABI } from "./abis/PUSDCTokenV2_1_ABI";
+import { PUSDCTokenU64V2_1_ABI } from "./abis/PUSDCTokenU64V2_1_ABI";
 import { PMUSDTokenV2_1_ABI } from "./abis/PMUSDTokenV2_1_ABI";
 import { requestEncrypt, requestDecrypt, FheType, estimateFheFee } from "@primuslabs/fhe-sdk";
 import { getACLContract } from "@primuslabs/fhe-sdk/dist/utils";
@@ -361,6 +362,15 @@ export class PUSDCTokenV2_1 extends PrivyTokenWithWhiteListAndDeposit {
   constructor() {
     const PUSDC_TOKEN_ADDRESS = process.env.PUSDC_TOKEN_ADDRESS || "";
     super(PUSDC_TOKEN_ADDRESS, PUSDCTokenV2_1_ABI);
+  }
+}
+export class PUSDCTokenU64V2_1 extends PrivyTokenWithWhiteListAndDeposit {
+  protected getFheType(): FheType {
+    return FheType.ve_uint64;
+  }
+  constructor() {
+    const PUSDC_TOKEN_ADDRESS = process.env.PUSDC_TOKEN_ADDRESS || "";
+    super(PUSDC_TOKEN_ADDRESS, PUSDCTokenU64V2_1_ABI);
   }
 }
 
