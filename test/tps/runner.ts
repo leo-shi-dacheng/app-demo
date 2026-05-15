@@ -28,21 +28,27 @@ function pairForIndex(pairs: RuntimePair[], index: number): RuntimePair {
   return pairs[index % pairs.length];
 }
 
+export interface RecipientBaselinePlan {
+  address: string;
+  expectedSettlements: number;
+}
+
 export function planRecipientBaselines(
   pairs: Array<Pick<RuntimePair, "recipientAddress">>,
   txCount: number
-): string[] {
-  const recipients: string[] = [];
-  const seen = new Set<string>();
+): RecipientBaselinePlan[] {
+  if (pairs.length === 0 || txCount <= 0) return [];
+
+  const finalRecipient = pairs[(txCount - 1) % pairs.length].recipientAddress.toLowerCase();
+  let expectedSettlements = 0;
 
   for (let i = 0; i < txCount; i++) {
-    const recipient = pairs[i % pairs.length].recipientAddress.toLowerCase();
-    if (seen.has(recipient)) continue;
-    seen.add(recipient);
-    recipients.push(recipient);
+    if (pairs[i % pairs.length].recipientAddress.toLowerCase() === finalRecipient) {
+      expectedSettlements++;
+    }
   }
 
-  return recipients;
+  return [{ address: finalRecipient, expectedSettlements }];
 }
 
 export interface SendWavePlan {
@@ -55,7 +61,7 @@ export function planSendWaves(txCount: number, pairCount: number, waveSize: numb
   if (txCount <= 0) throw new Error("TPS_TX_COUNT must be greater than 0");
   if (pairCount <= 0) throw new Error("At least one sender pair is required");
   if (waveSize <= 0) throw new Error("TPS_WAVE_SIZE must be greater than 0");
-  if (waveSize > pairCount) throw new Error("TPS_WAVE_SIZE cannot exceed sender pair count");
+  if (Math.min(waveSize, txCount) > pairCount) throw new Error("TPS_WAVE_SIZE cannot exceed sender pair count");
 
   const waves: SendWavePlan[] = [];
   for (let start = 0; start < txCount; start += waveSize) {
@@ -108,10 +114,18 @@ async function captureRecipientBaselines(
   const snapshots: BalanceSnapshot[] = [];
 
   for (const recipient of recipients) {
-    const balance = await getDecryptedBalanceUnits(runtime, config, recipient);
-    if (balance === null) throw new Error(`Failed to fetch recipient baseline: ${recipient}`);
-    snapshots.push({ address: recipient, baselineUnits: balance });
-    console.log(`${C.bold}Recipient baseline ${recipient}: ${formatTokenUnits(balance, runtime.decimals)}${C.reset}`);
+    const balance = await getDecryptedBalanceUnits(runtime, config, recipient.address);
+    if (balance === null) throw new Error(`Failed to fetch recipient baseline: ${recipient.address}`);
+    snapshots.push({
+      address: recipient.address,
+      baselineUnits: balance,
+      expectedSettlements: recipient.expectedSettlements,
+    });
+    console.log(
+      `${C.bold}Final recipient baseline ${recipient.address}: ` +
+      `${formatTokenUnits(balance, runtime.decimals)}, ` +
+      `expectedSettlements=${recipient.expectedSettlements}${C.reset}`
+    );
   }
 
   return snapshots;

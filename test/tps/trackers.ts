@@ -37,6 +37,18 @@ export async function trackViaBalances(
     `\n${C.cyan}[tracker] balance mode, recipients=${snapshots.length}, ` +
     `poll=${config.pollIntervalMs}ms${C.reset}`
   );
+  const completionSignal = snapshots.length === 1
+    ? {
+      recipient: snapshots[0].address,
+      expectedSettlements: snapshots[0].expectedSettlements,
+    }
+    : undefined;
+  if (completionSignal) {
+    console.log(
+      `${C.dim}[tracker] final recipient sentinel=${completionSignal.recipient} ` +
+      `expectedSettlements=${completionSignal.expectedSettlements}${C.reset}`
+    );
+  }
 
   const observedByRecipient = new Map<string, number>();
   const stats: TrackerStats = {
@@ -79,12 +91,18 @@ export async function trackViaBalances(
       console.log(
         `${C.dim}[tracker] recipient=${snapshot.address} ` +
         `delta=${formatTokenUnits(deltaUnits, runtime.decimals)} ` +
-        `settled=${observedByRecipient.get(snapshot.address.toLowerCase()) || 0}${C.reset}`
+        `settled=${observedByRecipient.get(snapshot.address.toLowerCase()) || 0}/` +
+        `${snapshot.expectedSettlements}${C.reset}`
       );
     }
 
     const completedAt = Date.now();
-    const marked = markCompletedByRecipientSettlements(state.records, observedByRecipient, completedAt);
+    const marked = markCompletedByRecipientSettlements(
+      state.records,
+      observedByRecipient,
+      completedAt,
+      completionSignal ? { completionSignal } : undefined
+    );
     if (marked.length > 0) logMarked(marked, completedAt, "balance");
 
     const allSent = state.isSendDone();

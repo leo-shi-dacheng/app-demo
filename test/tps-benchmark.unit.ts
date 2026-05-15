@@ -8,6 +8,7 @@ import {
   computeObservedSettlements,
   isTrackerComplete,
   markCompletedByObservedSettlements,
+  markCompletedByRecipientSettlements,
   parseTokenUnits,
 } from "./tps/metrics";
 import { parseBenchmarkConfig, parseWalletCsv } from "./tps/config";
@@ -20,6 +21,7 @@ import {
   formatDecryptHandleLog,
   isDecryptPendingError,
   isStaleDecryptClientError,
+  selectActiveAddressPairs,
   selectDecryptWallet,
 } from "./tps/runtime";
 import type { TxRecord } from "./tps/types";
@@ -251,17 +253,60 @@ function testPlansOneThousandTransfersAsTwentyWalletWaves() {
   });
 }
 
-function testPlansOnlyRecipientsTouchedByPlannedTransfers() {
+function testPlansOnlyFinalRecipientBaselineSentinel() {
   const pairs = Array.from({ length: 50 }, (_, index) => ({
     recipientAddress: `0x${(index + 1).toString(16).padStart(40, "0")}`,
   }));
 
   assert.deepEqual(planRecipientBaselines(pairs, 3), [
-    "0x0000000000000000000000000000000000000001",
-    "0x0000000000000000000000000000000000000002",
-    "0x0000000000000000000000000000000000000003",
+    {
+      address: "0x0000000000000000000000000000000000000003",
+      expectedSettlements: 1,
+    },
   ]);
-  assert.equal(planRecipientBaselines(pairs, 100).length, 50);
+  assert.deepEqual(planRecipientBaselines(pairs, 100), [
+    {
+      address: "0x0000000000000000000000000000000000000032",
+      expectedSettlements: 2,
+    },
+  ]);
+}
+
+function testFinalBalanceSignalMarksAllConfirmedRecords() {
+  const finalRecipient = "0x0000000000000000000000000000000000000003";
+  const records = [
+    tx({ id: 1, to: "0x0000000000000000000000000000000000000001", onChainAt: 2_000 }),
+    tx({ id: 2, to: "0x0000000000000000000000000000000000000002", onChainAt: 2_100 }),
+    tx({ id: 3, to: finalRecipient, onChainAt: undefined }),
+  ];
+  const observedByRecipient = new Map([[finalRecipient, 1]]);
+
+  assert.deepEqual(
+    markCompletedByRecipientSettlements(records, observedByRecipient, 5_000, {
+      completionSignal: { recipient: finalRecipient, expectedSettlements: 2 },
+    }).map(r => r.id),
+    []
+  );
+
+  observedByRecipient.set(finalRecipient, 2);
+  assert.deepEqual(
+    markCompletedByRecipientSettlements(records, observedByRecipient, 6_000, {
+      completionSignal: { recipient: finalRecipient, expectedSettlements: 2 },
+    }).map(r => r.id),
+    [1, 2]
+  );
+  assert.equal(records[0].completedAt, 6_000);
+  assert.equal(records[1].completedAt, 6_000);
+  assert.equal(records[2].completedAt, undefined);
+
+  records[2].onChainAt = 2_200;
+  assert.deepEqual(
+    markCompletedByRecipientSettlements(records, observedByRecipient, 7_000, {
+      completionSignal: { recipient: finalRecipient, expectedSettlements: 2 },
+    }).map(r => r.id),
+    [3]
+  );
+  assert.equal(records[2].completedAt, 7_000);
 }
 
 function testRejectsWaveSizeLargerThanPairCount() {
@@ -269,6 +314,32 @@ function testRejectsWaveSizeLargerThanPairCount() {
     () => planSendWaves(1000, 50, 51),
     /TPS_WAVE_SIZE cannot exceed sender pair count/i
   );
+}
+
+function testAllowsWaveSizeLargerThanPairCountForPartialFinalWave() {
+  const waves = planSendWaves(25, 25, 40);
+
+  assert.deepEqual(waves, [
+    {
+      id: 1,
+      txIds: Array.from({ length: 25 }, (_, index) => index + 1),
+      pairIds: Array.from({ length: 25 }, (_, index) => index + 1),
+    },
+  ]);
+}
+
+function testSelectsOnlyPairsNeededForPlannedTransactions() {
+  const pairs = Array.from({ length: 1000 }, (_, index) => ({
+    id: index + 1,
+    senderAddress: `0x${(index * 2 + 1).toString(16).padStart(40, "0")}`,
+    recipientAddress: `0x${(index * 2 + 2).toString(16).padStart(40, "0")}`,
+  }));
+
+  const activePairs = selectActiveAddressPairs(pairs, 25);
+
+  assert.equal(activePairs.length, 25);
+  assert.equal(activePairs[0].id, 1);
+  assert.equal(activePairs[24].id, 25);
 }
 
 function testParsesSendSchedulerConfig() {
@@ -384,8 +455,11 @@ testRegistersEncryptCommandForHandleGeneration();
 testAddressWhitelistKeyMatchesCastKeccakAddress();
 testReportKeepsOnlyOneCompletionTpsMetric();
 testPlansOneThousandTransfersAsTwentyWalletWaves();
-testPlansOnlyRecipientsTouchedByPlannedTransfers();
+testPlansOnlyFinalRecipientBaselineSentinel();
+testFinalBalanceSignalMarksAllConfirmedRecords();
 testRejectsWaveSizeLargerThanPairCount();
+testAllowsWaveSizeLargerThanPairCountForPartialFinalWave();
+testSelectsOnlyPairsNeededForPlannedTransactions();
 testParsesSendSchedulerConfig();
 testSelectsRecipientWalletForBalanceDecrypt();
 testFormatsDecryptHandleLogWithFullHandle();
