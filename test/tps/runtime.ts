@@ -5,9 +5,10 @@ import * as protoLoader from "@grpc/proto-loader";
 import { estimateFheFee, FheType, requestDecrypt, requestEncrypt } from "@primuslabs/fhe-sdk";
 import { PUSDCTokenV2_1_ABI } from "../../src/abis/PUSDCTokenV2_1_ABI";
 import { AlphatrionReward_ABI } from "../../src/abis/AlphatrionReward_ABI";
-import type { BenchmarkConfig, BenchmarkRuntime, PreparedTransfer, RuntimePair } from "./types";
+import type { AddressPair, BenchmarkConfig, BenchmarkRuntime, PreparedTransfer, RuntimePair } from "./types";
 import { addressWhitelistKey, parseTokenUnits, sleep, withTimeout } from "./metrics";
 import { buildAddressPairs } from "./wallet-plan";
+import { plannedTransferCount } from "./config";
 
 const WHITELIST_ABI = [
   "function verifyWhitelisted(bytes32 accountHash) view returns (bool)",
@@ -53,10 +54,10 @@ export async function createRuntime(config: BenchmarkConfig): Promise<BenchmarkR
 
   const senderWallets = config.privateKeys.map(privateKey => new ethers.Wallet(privateKey, provider));
   const decryptWallets = config.decryptPrivateKeys.map(privateKey => new ethers.Wallet(privateKey, provider));
-  const addressPairs = buildAddressPairs(
+  const addressPairs = selectActiveAddressPairs(buildAddressPairs(
     senderWallets.map(wallet => wallet.address),
     config.recipientAddresses
-  );
+  ), plannedTransferCount(config));
 
   const pairs: RuntimePair[] = await Promise.all(addressPairs.map(async addressPair => {
     const wallet = senderWallets[addressPair.id - 1];
@@ -86,6 +87,11 @@ export async function createRuntime(config: BenchmarkConfig): Promise<BenchmarkR
     amountUnits,
     totalFee: transferValue,
   };
+}
+
+export function selectActiveAddressPairs(addressPairs: AddressPair[], plannedTxCount: number): AddressPair[] {
+  if (plannedTxCount <= 0) return [];
+  return addressPairs.slice(0, Math.min(plannedTxCount, addressPairs.length));
 }
 
 export async function ensureControllerWhitelisted(runtime: BenchmarkRuntime) {

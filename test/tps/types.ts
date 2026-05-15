@@ -81,6 +81,7 @@ export interface TxRecord {
 export interface BalanceSnapshot {
   address: string;
   baselineUnits: bigint;
+  expectedSettlements: number;
 }
 
 export interface TrackerStats {

@@ -71,9 +71,29 @@ export function markCompletedByObservedSettlements(
 export function markCompletedByRecipientSettlements(
   txRecords: TxRecord[],
   observedByRecipient: Map<string, number>,
-  completedAt: number
+  completedAt: number,
+  options: {
+    completionSignal?: {
+      recipient: string;
+      expectedSettlements: number;
+    };
+  } = {}
 ): TxRecord[] {
   const marked: TxRecord[] = [];
+
+  if (options.completionSignal) {
+    const signalRecipient = options.completionSignal.recipient.toLowerCase();
+    const observed = observedByRecipient.get(signalRecipient) || 0;
+    if (observed < options.completionSignal.expectedSettlements) return marked;
+
+    for (const r of txRecords) {
+      if (r.error || r.completedAt || !r.onChainAt) continue;
+      r.completedAt = completedAt;
+      marked.push(r);
+    }
+
+    return marked;
+  }
 
   for (const [recipient, observedSettlements] of observedByRecipient) {
     const key = recipient.toLowerCase();
