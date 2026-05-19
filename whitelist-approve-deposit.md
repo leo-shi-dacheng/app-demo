@@ -53,6 +53,27 @@ Deployment transaction:
 - Whitelist `DEFAULT_ADMIN_ROLE` for `setRegulatoryTokenContract` and operator grants.
 - Whitelist `OPERATOR_ROLE` for `batchAddToWhitelist`.
 
+Current HashKey Chain testnet eUSDC deployment:
+
+```bash
+ENCRYPTED_USDC_TOKEN_ADDRESS=0x231625A8De72F86fd61BB730B8E00381fDAdA6a9
+REGULATORY_TOKEN_ADDRESS=0x231625A8De72F86fd61BB730B8E00381fDAdA6a9
+PUSDC_TOKEN_ADDRESS=0x231625A8De72F86fd61BB730B8E00381fDAdA6a9
+EUSDC_IMPLEMENTATION_ADDRESS=0x5fa51Bbb9dbB9b07B0E35FeF64dd2B4F7a71Dc79
+EUSDC_PROXY_ADMIN_ADDRESS=0x24e264Fdd659C304313FFbA4A38dCB49E4b712Cb
+```
+
+Deployment and setup transactions:
+
+```text
+deploy impl: 0x21182b2a975749783e3e2364bd6060c6034dce2ef8a27ad7c69dcec789a1bf36
+deploy proxy: 0xa4ac4a41187263227b60ac878b9668bea893012722deb4a0651857f21b3f2d24
+init FHE: 0xf90f94ff6b2c06af4706bef6f5753d9796d79bf7d70a095eca1fb43aa0400f4f
+add send oracle: 0x927ab2e42824b19a36f08152f8d91309fc919ad39bfd29f96743d9040d37802c
+set eUSDC whitelist: 0xf1e9c59dfc961ac18fe12cde8dd9853f4af562e01ae11a977059383470789d81
+set whitelist regulatory token: 0x02d6a9976527c44a1ab492b32ee9f003c530256ca947e81441a4e16e598fde04
+```
+
 `whitelist-users.csv` format:
 
 ```csv
