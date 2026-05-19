@@ -14,6 +14,8 @@ const WHITELIST_ABI = [
   "function verifyWhitelisted(bytes32 accountHash) view returns (bool)",
 ];
 
+export const TRANSFER_FHE_TYPE = FheType.ve_uint64;
+
 const DECRYPTION_PROTO_PATH = path.resolve(__dirname, "decryption.proto");
 
 type GrpcCiphertext = {
@@ -359,7 +361,7 @@ export async function getDecryptedBalanceUnits(
       requestDecrypt(
         decryptWallet,
         config.aclAddress,
-        FheType.ve_uint256,
+        TRANSFER_FHE_TYPE,
         handle
       ),
       config.decryptTimeoutMs,
@@ -392,7 +394,7 @@ export async function encryptTransferAmount(
     pair.wallet,
     config.aclAddress,
     runtime.amountUnits,
-    FheType.ve_uint256,
+    TRANSFER_FHE_TYPE,
     runtime.chainId,
     null
   );

@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { Command } from "commander";
 import { ethers } from "ethers";
+import { FheType } from "@primuslabs/fhe-sdk";
 import {
   addressWhitelistKey,
   computeObservedSettlements,
@@ -23,6 +24,7 @@ import {
   isStaleDecryptClientError,
   selectActiveAddressPairs,
   selectDecryptWallet,
+  TRANSFER_FHE_TYPE,
 } from "./tps/runtime";
 import type { TxRecord } from "./tps/types";
 
@@ -181,6 +183,10 @@ function testDefaultsBenchmarkAmountToOnePusdc() {
   });
 
   assert.equal(config.amount, "1");
+}
+
+function testTpsTransferUsesUint64FheType() {
+  assert.equal(TRANSFER_FHE_TYPE, FheType.ve_uint64);
 }
 
 function testDefaultsDecryptTimeoutToLongGrpcDeadline() {
@@ -448,6 +454,7 @@ testRejectsFewerThanTwentyFiveSenderWallets();
 testRejectsPrivateKeyOnlyConfig();
 testAcceptsFiftyWallets();
 testDefaultsBenchmarkAmountToOnePusdc();
+testTpsTransferUsesUint64FheType();
 testDefaultsDecryptTimeoutToLongGrpcDeadline();
 testParsesTransferValueOverride();
 testRejectsTrivialEncryptionSource();
