@@ -362,6 +362,10 @@ export class PUSDCTokenV2_1 extends PrivyTokenWithWhiteListAndDeposit {
     const PUSDC_TOKEN_ADDRESS = process.env.PUSDC_TOKEN_ADDRESS || "";
     super(PUSDC_TOKEN_ADDRESS, PUSDCTokenV2_1_ABI);
   }
+
+  protected getFheType(): FheType {
+    return FheType.ve_uint64;
+  }
 }
 
 export class PMUSDTokenV2_1 extends PrivyTokenWithWhiteListAndDeposit {

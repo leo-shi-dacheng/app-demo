@@ -28,12 +28,12 @@ export const PUSDCTokenV2_1_ABI = [
           "type": "address"
         },
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "allowance",
           "type": "bytes32"
         },
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "needed",
           "type": "bytes32"
         }
@@ -49,12 +49,12 @@ export const PUSDCTokenV2_1_ABI = [
           "type": "address"
         },
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "balance",
           "type": "bytes32"
         },
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "needed",
           "type": "bytes32"
         }
@@ -151,7 +151,7 @@ export const PUSDCTokenV2_1_ABI = [
         },
         {
           "indexed": false,
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "value",
           "type": "bytes32"
         }
@@ -215,7 +215,7 @@ export const PUSDCTokenV2_1_ABI = [
         },
         {
           "indexed": false,
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "value",
           "type": "bytes32"
         }
@@ -265,7 +265,7 @@ export const PUSDCTokenV2_1_ABI = [
       "name": "allowance",
       "outputs": [
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "",
           "type": "bytes32"
         }
@@ -317,7 +317,7 @@ export const PUSDCTokenV2_1_ABI = [
               "type": "bytes"
             }
           ],
-          "internalType": "struct uve_uint256",
+          "internalType": "struct uve_uint64",
           "name": "value",
           "type": "tuple"
         }
@@ -344,7 +344,7 @@ export const PUSDCTokenV2_1_ABI = [
       "name": "balanceOf",
       "outputs": [
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "",
           "type": "bytes32"
         }
@@ -449,7 +449,7 @@ export const PUSDCTokenV2_1_ABI = [
       "name": "getTotalHandles",
       "outputs": [
         {
-          "internalType": "ve_uint256[]",
+          "internalType": "ve_uint64[]",
           "name": "",
           "type": "bytes32[]"
         }
@@ -546,7 +546,7 @@ export const PUSDCTokenV2_1_ABI = [
       "name": "totalSupply",
       "outputs": [
         {
-          "internalType": "ve_uint256",
+          "internalType": "ve_uint64",
           "name": "",
           "type": "bytes32"
         }
@@ -579,7 +579,7 @@ export const PUSDCTokenV2_1_ABI = [
               "type": "bytes"
             }
           ],
-          "internalType": "struct uve_uint256",
+          "internalType": "struct uve_uint64",
           "name": "value",
           "type": "tuple"
         }
@@ -625,7 +625,7 @@ export const PUSDCTokenV2_1_ABI = [
               "type": "bytes"
             }
           ],
-          "internalType": "struct uve_uint256",
+          "internalType": "struct uve_uint64",
           "name": "value",
           "type": "tuple"
         }
